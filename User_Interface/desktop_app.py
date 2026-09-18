@@ -19,10 +19,28 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from main import build_registry, load_dotenv
-from agent import Agent
-from tools import DemoTools
-from state import format_report
+try:
+    from main import build_registry, load_dotenv
+    from agent import Agent
+    from tools import DemoTools
+    from state import format_report
+except ImportError:
+    build_registry = None
+    load_dotenv = None
+    Agent = None
+    DemoTools = None
+    format_report = None
+
+
+def _local_load_dotenv(env_path: Path) -> None:
+    if not env_path.is_file():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip().strip("'\""))
 
 # Color palette: Red & White
 COLOR_WHITE = "#ffffff"
@@ -64,7 +82,10 @@ class FaultlineDesktopUI:
         self.root.minsize(850, 600)
         self.root.configure(bg=COLOR_BG)
 
-        load_dotenv(PROJECT_ROOT / ".env")
+        if load_dotenv is not None:
+            load_dotenv(PROJECT_ROOT / ".env")
+        else:
+            _local_load_dotenv(PROJECT_ROOT / ".env")
 
         self.is_running = False
         self.stop_requested = False
@@ -374,8 +395,22 @@ class FaultlineDesktopUI:
         repo = Path(self.repo_entry.get().strip() or (PROJECT_ROOT / "demo_repo")).resolve()
         self._append_log(f"\n[MANUAL TEST] Running unittest in {repo}...\n")
         try:
-            tools = DemoTools(repo)
-            res = tools.run_tests()
+            if DemoTools is not None:
+                tools = DemoTools(repo)
+                res = tools.run_tests()
+            else:
+                import subprocess
+                proc = subprocess.run(
+                    [sys.executable, "-m", "unittest", "discover", "-v"],
+                    cwd=str(repo),
+                    capture_output=True,
+                    text=True
+                )
+                res = {
+                    "exit_code": proc.returncode,
+                    "output": proc.stdout + proc.stderr,
+                    "passed": proc.returncode == 0
+                }
             status = "PASSED ✅" if res.get("passed") else f"FAILED ❌ (Exit code {res.get('exit_code')})"
             self._append_log(f"Status: {status}\n{res.get('output')}\n")
         except Exception as exc:

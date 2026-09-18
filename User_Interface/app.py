@@ -23,11 +23,49 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from agent import Agent, AgentResult, AgentState, SYSTEM_PROMPT
-from main import build_registry, load_dotenv
-from registry import ToolRegistry
-from state import format_report
-from tools import DemoTools
+try:
+    from agent import Agent, AgentResult, AgentState, SYSTEM_PROMPT
+    from main import build_registry, load_dotenv
+    from registry import ToolRegistry
+    from state import format_report
+    from tools import DemoTools
+except ImportError:
+    Agent = None
+    SYSTEM_PROMPT = "You are an autonomous Python debugging agent."
+    build_registry = None
+    load_dotenv = None
+    ToolRegistry = None
+    DemoTools = None
+
+    class AgentState:  # type: ignore[no-redef]
+        def __init__(self, bug_report: str = "", repo_root: str = "") -> None:
+            self.bug_report = bug_report
+            self.repo_root = repo_root
+            self.files_inspected: list[str] = []
+            self.files_changed: list[str] = []
+            self.tests_run: int = 0
+            self.history: list[Any] = []
+
+    class AgentResult:  # type: ignore[no-redef]
+        def __init__(self, final_message: str = "", state: Any = None, verification_passed: bool = False) -> None:
+            self.final_message = final_message
+            self.state = state
+            self.verification_passed = verification_passed
+
+    def format_report(result: Any) -> str:  # type: ignore[no-redef]
+        status = "PASSED" if getattr(result, "verification_passed", False) else "INCOMPLETE"
+        return f"[FAULTLINE REPORT]\nStatus: {status}\n{getattr(result, 'final_message', '')}"
+
+
+def _local_load_dotenv(env_path: Path) -> None:
+    if not env_path.is_file():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip().strip("'\""))
 
 BUGGY_CALCULATOR_CODE = '''"""Tiny intentionally buggy calculator used by the FAULTLINE demo."""
 
@@ -663,7 +701,10 @@ class FaultlineHttpHandler(BaseHTTPRequestHandler):
 
 
 def run_web_server(host: str = "127.0.0.1", port: int = 5050, open_browser: bool = True) -> None:
-    load_dotenv(PROJECT_ROOT / ".env")
+    if load_dotenv is not None:
+        load_dotenv(PROJECT_ROOT / ".env")
+    else:
+        _local_load_dotenv(PROJECT_ROOT / ".env")
     server_address = (host, port)
     try:
         httpd = ThreadingHTTPServer(server_address, FaultlineHttpHandler)
