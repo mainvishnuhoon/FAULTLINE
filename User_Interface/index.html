@@ -1280,6 +1280,19 @@ Waiting for agent start command...
       initEventStream();
       loadCodeFile("calculator.py");
       refreshDiff();
+      fetch("/api/config")
+        .then(r => r.json())
+        .then(cfg => {
+          if (cfg && cfg.api_key) {
+            const inp = document.getElementById("apiKeyInput");
+            if (inp && !inp.value) inp.value = cfg.api_key;
+          }
+          if (cfg && cfg.model) {
+            const m = document.getElementById("modelSelect");
+            if (m) m.value = cfg.model;
+          }
+        })
+        .catch(() => {});
     });
 
     function showToast(msg, icon = "⚡") {
@@ -1449,8 +1462,8 @@ Waiting for agent start command...
       const apiKey = document.getElementById("apiKeyInput").value.trim();
 
       if (!simulate && !apiKey) {
-        // Check if there is an env key or alert user
         showToast("Enter Groq API Key or click 'Simulate Demo Run'!", "⚠️");
+        return;
       }
 
       // Clear timeline container
