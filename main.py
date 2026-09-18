@@ -13,8 +13,9 @@ from state import format_report
 from tools import DemoTools
 
 
-def load_dotenv(path: Path) -> None:
+def load_dotenv(path: str | Path) -> None:
     """Load simple KEY=VALUE lines without adding python-dotenv as a dependency."""
+    path = Path(path)
     if not path.exists():
         return
     for line in path.read_text(encoding="utf-8").splitlines():
