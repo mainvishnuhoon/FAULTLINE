@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAULTLINE — Autonomous Debugging Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Red & White Theme Color Tokens */
+      --white: #ffffff;
+      --off-white: #f8fafc;
+      --snow: #f1f5f9;
+      --red-primary: #dc2626;       /* Vibrant Cardinal Red */
+      --red-hover: #b91c1c;         /* Deep Crimson */
+      --red-dark: #991b1b;          /* Dark Wine */
+      --red-deep: #7f1d1d;          /* Midnight Red */
+      --red-light: #fef2f2;         /* Pale Rose tint */
+      --red-subtle: #fee2e2;        /* Soft Red border/chip */
+      --red-border: #fecaca;        /* Delicate Red border */
+      --red-glow: rgba(220, 38, 38, 0.25);
+      
+      --text-main: #0f172a;         /* High-contrast dark slate text */
+      --text-muted: #64748b;        /* Subtle slate */
+      --text-light: #94a3b8;
+      
+      --green-accent: #16a34a;
+      --green-light: #f0fdf4;
+      --green-border: #bbf7d0;
+
+      --card-bg: #ffffff;
+      --card-border: #f1f5f9;
+      --card-shadow: 0 4px 20px -2px rgba(220, 38, 38, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+      --card-shadow-hover: 0 10px 25px -4px rgba(220, 38, 38, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.05);
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 18px;
+
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--off-white);
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Red Accent Top Progress Bar */
+    .top-accent-bar {
+      height: 4px;
+      background: linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #b91c1c 100%);
+      width: 100%;
+    }
+
+    /* Header */
+    header {
+      background: var(--white);
+      border-bottom: 1px solid var(--red-border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 2px 10px rgba(220, 38, 38, 0.04);
+    }
+
+    .brand-container {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--red-primary) 0%, var(--red-hover) 100%);
+      color: var(--white);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px var(--red-glow);
+    }
+
+    .brand-icon svg {
+      width: 24px;
+      height: 24px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .brand-title-wrap h1 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--red-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-title-wrap h1 span.tag {
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--red-light);
+      color: var(--red-primary);
+      border: 1px solid var(--red-border);
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .brand-title-wrap p {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      transition: all 0.2s ease;
+    }
+
+    .status-badge.idle {
+      background: var(--snow);
+      color: var(--text-muted);
+      border: 1px solid #e2e8f0;
+    }
+
+    .status-badge.running {
+      background: var(--red-light);
+      color: var(--red-primary);
+      border: 1px solid var(--red-border);
+      animation: pulse-badge 1.8s infinite;
+    }
+
+    .status-badge.passed {
+      background: var(--green-light);
+      color: var(--green-accent);
+      border: 1px solid var(--green-border);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    @keyframes pulse-badge {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.03); }
+    }
+
+    /* Buttons */
+    .btn {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.18s ease;
+      border: 1px solid transparent;
+      outline: none;
+      text-decoration: none;
+      user-select: none;
+    }
+
+    .btn-primary {
+      background: var(--red-primary);
+      color: var(--white);
+      border-color: var(--red-hover);
+      box-shadow: 0 3px 10px var(--red-glow);
+    }
+
+    .btn-primary:hover {
+      background: var(--red-hover);
+      box-shadow: 0 5px 15px rgba(220, 38, 38, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: var(--white);
+      color: var(--red-primary);
+      border: 1px solid var(--red-border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--red-light);
+      border-color: var(--red-primary);
+      color: var(--red-hover);
+    }
+
+    .btn-danger {
+      background: var(--white);
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+    }
+
+    .btn-danger:hover {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+
+    .btn-outline {
+      background: var(--white);
+      color: var(--text-main);
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-outline:hover {
+      border-color: var(--red-border);
+      background: var(--red-light);
+      color: var(--red-primary);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Main Layout */
+    .app-container {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 20px;
+      padding: 24px;
+      max-width: 1720px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1180px) {
+      .app-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left Control Sidebar */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--card-shadow);
+      padding: 20px;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: var(--red-border);
+      box-shadow: var(--card-shadow-hover);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title svg {
+      width: 18px;
+      height: 18px;
+      color: var(--red-primary);
+    }
+
+    /* Form Fields */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .input-control, select, textarea {
+      width: 100%;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      padding: 9px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid #cbd5e1;
+      background: var(--white);
+      color: var(--text-main);
+      transition: all 0.15s ease;
+      outline: none;
+    }
+
+    .input-control:focus, select:focus, textarea:focus {
+      border-color: var(--red-primary);
+      box-shadow: 0 0 0 3px var(--red-subtle);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 85px;
+      line-height: 1.45;
+    }
+
+    .helper-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Mode Pill Selector */
+    .preset-pills {
+      display: flex;
+      background: var(--snow);
+      border-radius: var(--radius-md);
+      padding: 4px;
+      gap: 4px;
+      margin-bottom: 14px;
+    }
+
+    .preset-pill {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: all 0.15s ease;
+    }
+
+    .preset-pill.active {
+      background: var(--white);
+      color: var(--red-primary);
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    }
+
+    /* API Key input with toggle */
+    .api-key-wrap {
+      display: flex;
+      gap: 8px;
+    }
+
+    .api-key-wrap input {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    /* Quick Action Grid */
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .action-grid .btn-primary {
+      grid-column: 1 / -1;
+      padding: 12px 18px;
+      font-size: 14px;
+      justify-content: center;
+    }
+
+    /* Step Timeline in Left Pane */
+    .timeline-container {
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .step-card {
+      background: var(--white);
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid var(--red-primary);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      transition: all 0.15s ease;
+    }
+
+    .step-card:hover {
+      border-color: var(--red-border);
+      border-left-color: var(--red-hover);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.06);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .step-num-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--red-primary);
+      background: var(--red-light);
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--red-border);
+    }
+
+    .step-tool-badge {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .step-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .step-details-toggle {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--red-primary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .step-payload {
+      display: none;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      margin-top: 8px;
+      overflow-x: auto;
+      max-height: 200px;
+    }
+
+    .step-payload.open {
+      display: block;
+    }
+
+    /* Right Main Panel & Tabs */
+    .main-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Stats Quick Strip */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .metric-card {
+      background: var(--white);
+      border: 1px solid #f1f5f9;
+      border-top: 3px solid var(--red-primary);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .metric-val {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--red-dark);
+      margin-top: 4px;
+      font-family: var(--font-mono);
+    }
+
+    /* Tabs Header */
+    .tabs-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .tabs-nav {
+      display: flex;
+      align-items: center;
+      background: var(--white);
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0 16px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 14px 18px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 3px solid transparent;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--red-primary);
+    }
+
+    .tab-btn.active {
+      color: var(--red-primary);
+      border-bottom-color: var(--red-primary);
+      font-weight: 700;
+    }
+
+    .tab-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .tab-content {
+      padding: 20px;
+      flex: 1;
+      display: none;
+      flex-direction: column;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* Terminal Console Window */
+    .terminal-wrapper {
+      background: #090d16;
+      border-radius: var(--radius-md);
+      border: 1px solid #1e293b;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 480px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .terminal-bar {
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .terminal-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .terminal-dot.red { background: #ef4444; }
+    .terminal-dot.yellow { background: #f59e0b; }
+    .terminal-dot.green { background: #10b981; }
+
+    .terminal-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .terminal-title span.pulse {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red-primary);
+      animation: pulse-badge 1.5s infinite;
+    }
+
+    .terminal-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .terminal-btn {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+    }
+
+    .terminal-btn:hover {
+      background: #334155;
+      color: #fff;
+    }
+
+    .terminal-output {
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.6;
+      color: #e2e8f0;
+      overflow-y: auto;
+      flex: 1;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .terminal-output .step-head {
+      color: #f87171;
+      font-weight: 700;
+      padding-top: 6px;
+    }
+
+    .terminal-output .tool-head {
+      color: #fdba74;
+      font-weight: 600;
+    }
+
+    .terminal-output .success-text {
+      color: #4ade80;
+    }
+
+    .terminal-output .error-text {
+      color: #f87171;
+    }
+
+    /* Diff Viewer */
+    .diff-container {
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--white);
+    }
+
+    .diff-header {
+      background: var(--red-light);
+      border-bottom: 1px solid var(--red-border);
+      padding: 10px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--red-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .diff-body {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.5;
+      max-height: 480px;
+      overflow-y: auto;
+    }
+
+    .diff-line {
+      display: flex;
+      padding: 2px 8px;
+    }
+
+    .diff-line.added {
+      background: #f0fdf4;
+      color: #166534;
+      border-left: 3px solid #22c55e;
+    }
+
+    .diff-line.removed {
+      background: #fef2f2;
+      color: #991b1b;
+      border-left: 3px solid #ef4444;
+    }
+
+    .diff-line.info {
+      background: #f8fafc;
+      color: #64748b;
+      font-style: italic;
+    }
+
+    /* Code Viewer Tab */
+    .code-viewer-wrap {
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-md);
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 16px;
+      max-height: 520px;
+      overflow-y: auto;
+      white-space: pre;
+    }
+
+    /* Report Card */
+    .report-card-banner {
+      background: var(--red-light);
+      border: 2px solid var(--red-border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .report-card-banner.passed {
+      background: var(--green-light);
+      border-color: var(--green-border);
+    }
+
+    .report-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 8px 20px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+    }
+
+    .report-badge.passed {
+      background: #22c55e;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    }
+
+    .report-badge.not-verified {
+      background: var(--red-primary);
+      color: #ffffff;
+      box-shadow: 0 4px 12px var(--red-glow);
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .report-detail-block {
+      background: var(--white);
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .report-detail-block h4 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--red-dark);
+      margin-bottom: 8px;
+    }
+
+    .report-detail-block p {
+      font-size: 13px;
+      color: var(--text-main);
+    }
+
+    /* Toast Notifications */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--white);
+      border: 1px solid var(--red-border);
+      border-left: 4px solid var(--red-primary);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 100;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Empty States */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+    }
+
+    .empty-state h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      max-width: 360px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Red Accent Line -->
+  <div class="top-accent-bar"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand-container">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+      </div>
+      <div class="brand-title-wrap">
+        <h1>FAULTLINE <span class="tag">Autonomous Agent</span></h1>
+        <p>Dynamic Python debugging with test-driven reasoning & verification</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div id="statusBadge" class="status-badge idle">
+        <span class="status-dot"></span>
+        <span id="statusText">Agent Idle</span>
+      </div>
+      <button class="btn btn-secondary" onclick="resetDemoRepo()" title="Reset demo_repo to original buggy files">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        Reset Demo
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="app-container">
+    
+    <!-- Left Sidebar: Controls & Live Timeline -->
+    <aside class="sidebar">
+      
+      <!-- Config Card -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            Agent Configuration
+          </h2>
+          <span style="font-size: 11px; color: var(--red-primary); font-weight: 700;">Red & White UI</span>
+        </div>
+
+        <!-- Mode selector -->
+        <div class="preset-pills">
+          <button id="pillDemo" class="preset-pill active" onclick="setMode('demo')">Prepared Demo (2 Bugs)</button>
+          <button id="pillCustom" class="preset-pill" onclick="setMode('custom')">Custom Repository</button>
+        </div>
+
+        <!-- Repo Path -->
+        <div class="form-group">
+          <label for="repoInput">Repository Path</label>
+          <input id="repoInput" type="text" class="input-control" placeholder="Absolute or relative repository path">
+          <div class="helper-text">
+            <span>Workspace root protected by FAULTLINE sandbox.</span>
+          </div>
+        </div>
+
+        <!-- Bug Report Description -->
+        <div class="form-group">
+          <label for="bugInput">Bug Description / Goal</label>
+          <textarea id="bugInput" rows="3" class="input-control" placeholder="Describe the failing test or behavior..."></textarea>
+        </div>
+
+        <!-- API Key Input -->
+        <div class="form-group">
+          <label for="apiKeyInput">Groq API Key</label>
+          <div class="api-key-wrap">
+            <input id="apiKeyInput" type="password" class="input-control" placeholder="gsk_... or reads from .env">
+            <button class="btn btn-outline" type="button" onclick="toggleKeyVisibility()" title="Show/Hide">👁️</button>
+            <button class="btn btn-secondary" type="button" onclick="saveApiKey()" title="Save to .env">Save</button>
+          </div>
+          <div class="helper-text">
+            <span>Required for live Groq LLM reasoning (or use Simulation below).</span>
+          </div>
+        </div>
+
+        <!-- Model & Max Steps -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label for="modelSelect">Groq Model</label>
+            <select id="modelSelect">
+              <option value="openai/gpt-oss-20b" selected>openai/gpt-oss-20b (Default)</option>
+              <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+              <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
+              <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="maxStepsInput">Max Steps</label>
+            <input id="maxStepsInput" type="number" min="1" max="30" value="12" class="input-control">
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="action-grid">
+          <button id="btnRun" class="btn btn-primary" onclick="startAgent(false)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Start Autonomous Agent
+          </button>
+          <button id="btnSimulate" class="btn btn-secondary" onclick="startAgent(true)" title="Run realistic step-by-step trace without requiring an API key">
+            ⚡ Simulate Demo Run
+          </button>
+          <button id="btnStop" class="btn btn-danger" onclick="stopAgent()" disabled>
+            ⏹ Stop Agent
+          </button>
+        </div>
+
+        <div style="margin-top: 10px; display: flex; gap: 10px;">
+          <button class="btn btn-outline" style="flex: 1;" onclick="runManualTests()">
+            🧪 Run Tests Now
+          </button>
+          <button class="btn btn-outline" style="flex: 1;" onclick="inspectRepoFiles()">
+            📁 Inspect Files
+          </button>
+        </div>
+      </section>
+
+      <!-- Live Step Timeline Card -->
+      <section class="card" style="flex: 1;">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            Step Execution Timeline
+          </h2>
+          <span id="stepCountBadge" class="step-num-badge">0 Steps</span>
+        </div>
+
+        <div id="timelineContainer" class="timeline-container">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <h3>No Steps Executed Yet</h3>
+            <p>Click "Start Autonomous Agent" or "Simulate Demo Run" to watch the dynamic observe/reason/act loop.</p>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- Right Main Area: Metrics, Tabs, Console & Diffs -->
+    <section class="main-panel">
+      
+      <!-- Metrics Strip -->
+      <div class="metrics-bar">
+        <div class="metric-card">
+          <span class="metric-label">Steps Taken</span>
+          <span id="metricSteps" class="metric-val">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Files Inspected</span>
+          <span id="metricInspected" class="metric-val">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Files Changed</span>
+          <span id="metricChanged" class="metric-val">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Tests Executed</span>
+          <span id="metricTests" class="metric-val">0</span>
+        </div>
+      </div>
+
+      <!-- Main Tabs Window -->
+      <div class="tabs-card">
+        <nav class="tabs-nav">
+          <button class="tab-btn active" onclick="switchTab('tabConsole')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"/>
+              <line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+            Live Trace Console
+          </button>
+          <button class="tab-btn" onclick="switchTab('tabDiff')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="18" r="3"/>
+              <circle cx="6" cy="6" r="3"/>
+              <path d="M13 6h3a2 2 0 0 1 2 2v7"/>
+              <line x1="6" y1="9" x2="6" y2="21"/>
+            </svg>
+            File Diff / Changes
+          </button>
+          <button class="tab-btn" onclick="switchTab('tabCode')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            Source Code Viewer
+          </button>
+          <button class="tab-btn" onclick="switchTab('tabTests')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 2v7.31M14 9.3V1.99M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0"/>
+            </svg>
+            Test Suite Runner
+          </button>
+          <button class="tab-btn" onclick="switchTab('tabReport')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            Verification Report
+          </button>
+        </nav>
+
+        <!-- Tab 1: Live Terminal Console -->
+        <div id="tabConsole" class="tab-content active">
+          <div class="terminal-wrapper">
+            <div class="terminal-bar">
+              <div class="terminal-dots">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
+              </div>
+              <div class="terminal-title">
+                <span class="pulse"></span>
+                faultline-agent-trace // zsh session
+              </div>
+              <div class="terminal-controls">
+                <button class="terminal-btn" onclick="clearConsole()">Clear</button>
+                <button class="terminal-btn" onclick="copyConsole()">Copy Log</button>
+              </div>
+            </div>
+            <div id="terminalOutput" class="terminal-output">
+============================================================
+  ⚡ FAULTLINE Autonomous Debugging Agent (Ready)
+  Color Scheme: Red & White Edition
+  Observe -> Reason -> Edit -> Verify Loop
+============================================================
+Waiting for agent start command...
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Visual Code Diff -->
+        <div id="tabDiff" class="tab-content">
+          <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; font-weight: 700; color: var(--red-dark);">Comparing implementation against safety backup</span>
+            <button class="btn btn-secondary" onclick="refreshDiff()">🔄 Refresh Diff</button>
+          </div>
+          <div class="diff-container">
+            <div class="diff-header">
+              <span id="diffFileName">calculator.py</span>
+              <span id="diffBackupTag" style="font-size: 11px; font-weight: 600; color: var(--text-muted);">Original vs Modified</span>
+            </div>
+            <div id="diffContent" class="diff-body">
+              <div class="diff-line info">No edits performed yet. The agent creates automatic backups in .faultline_backups/ prior to any edit.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Code Viewer -->
+        <div id="tabCode" class="tab-content">
+          <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-outline active" onclick="loadCodeFile('calculator.py')">calculator.py</button>
+              <button class="btn btn-outline" onclick="loadCodeFile('test_calculator.py')">test_calculator.py</button>
+            </div>
+            <span id="codeFileStatus" style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);"></span>
+          </div>
+          <div id="codeViewer" class="code-viewer-wrap">Loading code...</div>
+        </div>
+
+        <!-- Tab 4: Test Suite Runner -->
+        <div id="tabTests" class="tab-content">
+          <div style="margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: var(--text-muted);">Command: <code>python -m unittest discover -v</code></span>
+            <button class="btn btn-primary" onclick="runManualTests()">⚡ Run Tests Now</button>
+          </div>
+          <div class="terminal-wrapper" style="min-height: 400px;">
+            <div class="terminal-bar">
+              <div class="terminal-dots">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
+              </div>
+              <div class="terminal-title">unittest test runner</div>
+            </div>
+            <div id="testRunOutput" class="terminal-output">Click "Run Tests Now" to evaluate test suite status.</div>
+          </div>
+        </div>
+
+        <!-- Tab 5: Verification Report -->
+        <div id="tabReport" class="tab-content">
+          <div id="reportBanner" class="report-card-banner">
+            <span id="reportStatusBadge" class="report-badge not-verified">NOT VERIFIED</span>
+            <h3 id="reportTitle" style="margin-top: 10px; font-size: 18px; font-weight: 800; color: var(--text-main);">Pending Agent Execution</h3>
+          </div>
+
+          <div class="report-grid">
+            <div class="report-detail-block">
+              <h4>🎯 Bug Identified</h4>
+              <p id="reportBugIdentified">None identified yet.</p>
+            </div>
+            <div class="report-detail-block">
+              <h4>💡 Agent Hypothesis / Reasoning</h4>
+              <p id="reportHypothesis">Waiting for reasoning summary from LLM.</p>
+            </div>
+            <div class="report-detail-block">
+              <h4>🔍 Files Inspected</h4>
+              <p id="reportFilesInspected">None</p>
+            </div>
+            <div class="report-detail-block">
+              <h4>📝 Files Changed</h4>
+              <p id="reportFilesChanged">None</p>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px; text-align: right;">
+            <button class="btn btn-secondary" onclick="copyReportText()">📋 Copy Formatted Report</button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">
+    <span id="toastIcon">⚡</span>
+    <span id="toastMessage">Notification message</span>
+  </div>
+
+  <script>
+    const DEMO_REPO_PATH = "demo_repo";
+    const DEMO_BUG = "The calculator's total calculation is wrong for discounted items, and its average helper crashes for an empty list. Investigate and fix both implementation bugs.";
+    
+    let currentMode = "demo";
+    let isRunning = false;
+    let eventSource = null;
+    let fullReportText = "";
+
+    // Initialize UI on page load
+    window.addEventListener("DOMContentLoaded", () => {
+      setMode("demo");
+      initEventStream();
+      loadCodeFile("calculator.py");
+      refreshDiff();
+    });
+
+    function showToast(msg, icon = "⚡") {
+      const toast = document.getElementById("toast");
+      document.getElementById("toastIcon").textContent = icon;
+      document.getElementById("toastMessage").textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3200);
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      const pillDemo = document.getElementById("pillDemo");
+      const pillCustom = document.getElementById("pillCustom");
+      const repoInput = document.getElementById("repoInput");
+      const bugInput = document.getElementById("bugInput");
+
+      if (mode === "demo") {
+        pillDemo.classList.add("active");
+        pillCustom.classList.remove("active");
+        repoInput.value = DEMO_REPO_PATH;
+        bugInput.value = DEMO_BUG;
+      } else {
+        pillDemo.classList.remove("active");
+        pillCustom.classList.add("active");
+        repoInput.value = "";
+        bugInput.value = "";
+        repoInput.focus();
+      }
+    }
+
+    function toggleKeyVisibility() {
+      const inp = document.getElementById("apiKeyInput");
+      inp.type = inp.type === "password" ? "text" : "password";
+    }
+
+    async function saveApiKey() {
+      const key = document.getElementById("apiKeyInput").value.trim();
+      const model = document.getElementById("modelSelect").value;
+      if (!key) {
+        showToast("Enter a key first!", "⚠️");
+        return;
+      }
+      try {
+        const res = await fetch("/api/save_env", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ groq_api_key: key, model: model })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast("GROQ_API_KEY saved to .env!", "✅");
+        }
+      } catch (err) {
+        showToast("Failed to save: " + err, "❌");
+      }
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+      const targetBtn = Array.from(document.querySelectorAll(".tab-btn")).find(b => b.getAttribute("onclick").includes(tabId));
+      if (targetBtn) targetBtn.classList.add("active");
+
+      const targetTab = document.getElementById(tabId);
+      if (targetTab) targetTab.classList.add("active");
+
+      if (tabId === "tabDiff") refreshDiff();
+    }
+
+    function initEventStream() {
+      if (eventSource) eventSource.close();
+      eventSource = new EventSource("/api/stream");
+
+      eventSource.addEventListener("status", (e) => {
+        const data = JSON.parse(e.data);
+        updateStatusView(data);
+      });
+
+      eventSource.addEventListener("step", (e) => {
+        const step = JSON.parse(e.data);
+        appendStepToTimeline(step);
+        refreshDiff();
+      });
+
+      eventSource.addEventListener("log", (e) => {
+        const log = JSON.parse(e.data);
+        appendTerminalLog(log.line);
+      });
+
+      eventSource.addEventListener("finished", (e) => {
+        const data = JSON.parse(e.data);
+        updateStatusView(data);
+        setRunningState(false);
+        refreshDiff();
+        showToast(data.verification_passed ? "Verification Passed! All tests green." : "Agent execution completed.", data.verification_passed ? "✅" : "ℹ️");
+      });
+
+      eventSource.addEventListener("error", (e) => {
+        // SSE reconnect handles itself
+      });
+    }
+
+    function updateStatusView(status) {
+      setRunningState(status.is_running);
+      document.getElementById("metricSteps").textContent = status.steps || 0;
+      document.getElementById("metricInspected").textContent = (status.files_inspected || []).length;
+      document.getElementById("metricChanged").textContent = (status.files_changed || []).length;
+      document.getElementById("metricTests").textContent = status.tests_run || 0;
+      document.getElementById("stepCountBadge").textContent = `${status.steps || 0} Steps`;
+
+      // Verification report updates
+      if (status.report || status.final_message) {
+        fullReportText = status.report || status.final_message;
+        const banner = document.getElementById("reportBanner");
+        const badge = document.getElementById("reportStatusBadge");
+        const title = document.getElementById("reportTitle");
+
+        if (status.verification_passed) {
+          banner.className = "report-card-banner passed";
+          badge.className = "report-badge passed";
+          badge.textContent = "PASSED";
+          title.textContent = "All Tests Successfully Verified!";
+        } else {
+          banner.className = "report-card-banner";
+          badge.className = "report-badge not-verified";
+          badge.textContent = "NOT VERIFIED";
+          title.textContent = "Fix Could Not Be Verified";
+        }
+
+        document.getElementById("reportBugIdentified").textContent = status.bug_report || "None";
+        document.getElementById("reportHypothesis").textContent = status.final_message || "None provided";
+        document.getElementById("reportFilesInspected").textContent = (status.files_inspected || []).join(", ") || "None";
+        document.getElementById("reportFilesChanged").textContent = (status.files_changed || []).join(", ") || "None";
+      }
+    }
+
+    function setRunningState(running) {
+      isRunning = running;
+      const badge = document.getElementById("statusBadge");
+      const text = document.getElementById("statusText");
+      const btnRun = document.getElementById("btnRun");
+      const btnSim = document.getElementById("btnSimulate");
+      const btnStop = document.getElementById("btnStop");
+
+      if (running) {
+        badge.className = "status-badge running";
+        text.textContent = "Agent Working...";
+        btnRun.disabled = true;
+        btnSim.disabled = true;
+        btnStop.disabled = false;
+      } else {
+        badge.className = "status-badge idle";
+        text.textContent = "Agent Idle";
+        btnRun.disabled = false;
+        btnSim.disabled = false;
+        btnStop.disabled = true;
+      }
+    }
+
+    async function startAgent(simulate = false) {
+      const repo = document.getElementById("repoInput").value.trim() || DEMO_REPO_PATH;
+      const bug = document.getElementById("bugInput").value.trim() || DEMO_BUG;
+      const model = document.getElementById("modelSelect").value;
+      const maxSteps = parseInt(document.getElementById("maxStepsInput").value) || 12;
+      const apiKey = document.getElementById("apiKeyInput").value.trim();
+
+      if (!simulate && !apiKey) {
+        // Check if there is an env key or alert user
+        showToast("Enter Groq API Key or click 'Simulate Demo Run'!", "⚠️");
+      }
+
+      // Clear timeline container
+      document.getElementById("timelineContainer").innerHTML = "";
+      clearConsole();
+      setRunningState(true);
+      showToast(simulate ? "Starting simulation mode..." : "Starting FAULTLINE autonomous agent...", "🚀");
+
+      try {
+        const res = await fetch("/api/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            repo: repo,
+            bug: bug,
+            model: model,
+            max_steps: maxSteps,
+            api_key: apiKey,
+            simulate: simulate
+          })
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          showToast(data.message || "Could not start agent", "❌");
+          setRunningState(false);
+        }
+      } catch (err) {
+        showToast("Error: " + err, "❌");
+        setRunningState(false);
+      }
+    }
+
+    async function stopAgent() {
+      try {
+        await fetch("/api/stop", { method: "POST" });
+        showToast("Stop requested...", "⏹️");
+      } catch (err) {
+        showToast("Failed to stop: " + err, "❌");
+      }
+    }
+
+    async function resetDemoRepo() {
+      try {
+        const res = await fetch("/api/reset_demo", { method: "POST" });
+        const data = await res.json();
+        if (data.ok) {
+          showToast("demo_repo/calculator.py restored to baseline!", "🔄");
+          refreshDiff();
+          loadCodeFile("calculator.py");
+          runManualTests();
+        } else {
+          showToast(data.error || "Reset failed", "❌");
+        }
+      } catch (err) {
+        showToast("Reset error: " + err, "❌");
+      }
+    }
+
+    async function runManualTests() {
+      const repo = document.getElementById("repoInput").value.trim() || DEMO_REPO_PATH;
+      switchTab("tabTests");
+      const out = document.getElementById("testRunOutput");
+      out.textContent = "Running test suite in " + repo + "...\n";
+
+      try {
+        const res = await fetch("/api/run_tests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repo: repo })
+        });
+        const data = await res.json();
+        const statusStr = data.passed ? "ALL TESTS PASSED ✅" : "TESTS FAILED ❌ (Exit code: " + data.exit_code + ")";
+        out.textContent = `STATUS: ${statusStr}\nCommand: ${data.command}\n\n${data.output || data.error || ''}`;
+        showToast(data.passed ? "Tests Passed!" : "Tests Failed", data.passed ? "✅" : "❌");
+      } catch (err) {
+        out.textContent = "Error executing tests: " + err;
+      }
+    }
+
+    async function inspectRepoFiles() {
+      const repo = document.getElementById("repoInput").value.trim() || DEMO_REPO_PATH;
+      switchTab("tabConsole");
+      try {
+        const res = await fetch("/api/inspect_repo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repo: repo, action: "list" })
+        });
+        const data = await res.json();
+        appendTerminalLog(`\n[MANUAL INSPECT] Repository files:\n${JSON.stringify(data.files, null, 2)}`);
+        showToast("Listed repository files in console", "📁");
+      } catch (err) {
+        showToast("Error inspecting repo: " + err, "❌");
+      }
+    }
+
+    function appendStepToTimeline(step) {
+      const container = document.getElementById("timelineContainer");
+      const empty = container.querySelector(".empty-state");
+      if (empty) empty.remove();
+
+      const card = document.createElement("div");
+      card.className = "step-card";
+
+      const toolBadgeClass = step.tool === "edit_file" ? "color: var(--red-primary); font-weight: 700;" : "color: var(--text-main);";
+
+      card.innerHTML = `
+        <div class="step-header">
+          <span class="step-num-badge">Step ${step.step}</span>
+          <span class="step-tool-badge" style="${toolBadgeClass}">⚡ ${step.tool}</span>
+        </div>
+        <div class="step-meta">
+          <span>🕒 ${step.timestamp || ''}</span>
+          <span>Status: ${step.result && step.result.ok !== false ? '✅ OK' : '⚠️ Note'}</span>
+        </div>
+        <button class="step-details-toggle" onclick="togglePayload(this)">
+          <span>▶ View Payload</span>
+        </button>
+        <div class="step-payload">
+          <strong>Arguments:</strong>\n${JSON.stringify(step.arguments, null, 2)}\n\n<strong>Result:</strong>\n${JSON.stringify(step.result, null, 2)}
+        </div>
+      `;
+      container.appendChild(card);
+      card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function togglePayload(btn) {
+      const payload = btn.nextElementSibling;
+      payload.classList.toggle("open");
+      btn.querySelector("span").textContent = payload.classList.contains("open") ? "▼ Hide Payload" : "▶ View Payload";
+    }
+
+    function appendTerminalLog(line) {
+      const term = document.getElementById("terminalOutput");
+      term.textContent += "\n" + line;
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function clearConsole() {
+      document.getElementById("terminalOutput").textContent = "Console cleared.\n";
+    }
+
+    function copyConsole() {
+      const text = document.getElementById("terminalOutput").textContent;
+      navigator.clipboard.writeText(text);
+      showToast("Trace log copied to clipboard!", "📋");
+    }
+
+    function copyReportText() {
+      if (!fullReportText) {
+        showToast("No report generated yet.", "⚠️");
+        return;
+      }
+      navigator.clipboard.writeText(fullReportText);
+      showToast("Report copied to clipboard!", "📋");
+    }
+
+    async function loadCodeFile(path) {
+      const repo = document.getElementById("repoInput").value.trim() || DEMO_REPO_PATH;
+      document.getElementById("codeFileStatus").textContent = "Reading " + path + "...";
+      try {
+        const res = await fetch(`/api/file?repo=${encodeURIComponent(repo)}&path=${encodeURIComponent(path)}`);
+        const data = await res.json();
+        if (data.ok) {
+          document.getElementById("codeViewer").textContent = data.content;
+          document.getElementById("codeFileStatus").textContent = `${path} (${data.content.length} chars)`;
+        } else {
+          document.getElementById("codeViewer").textContent = "Could not load file: " + data.error;
+        }
+      } catch (err) {
+        document.getElementById("codeViewer").textContent = "Error reading file: " + err;
+      }
+    }
+
+    async function refreshDiff() {
+      const repo = document.getElementById("repoInput").value.trim() || DEMO_REPO_PATH;
+      try {
+        const res = await fetch(`/api/diff?repo=${encodeURIComponent(repo)}`);
+        const data = await res.json();
+        const diffBox = document.getElementById("diffContent");
+        const backupTag = document.getElementById("diffBackupTag");
+
+        if (data.backup_file) {
+          backupTag.textContent = `Compared against backup: ${data.backup_file}`;
+        }
+
+        if (!data.has_diff) {
+          diffBox.innerHTML = '<div class="diff-line info">No differences found between original/backup and current working file.</div>';
+          return;
+        }
+
+        const lines = data.diff_text.split("\n");
+        let html = "";
+        lines.forEach(line => {
+          if (line.startsWith("+") && !line.startsWith("+++")) {
+            html += `<div class="diff-line added">${escapeHtml(line)}</div>`;
+          } else if (line.startsWith("-") && !line.startsWith("---")) {
+            html += `<div class="diff-line removed">${escapeHtml(line)}</div>`;
+          } else if (line.startsWith("@@")) {
+            html += `<div class="diff-line info">${escapeHtml(line)}</div>`;
+          } else {
+            html += `<div class="diff-line">${escapeHtml(line)}</div>`;
+          }
+        });
+        diffBox.innerHTML = html;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
+</body>
+</html>
