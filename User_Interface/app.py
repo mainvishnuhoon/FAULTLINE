@@ -543,6 +543,13 @@ class FaultlineHttpHandler(BaseHTTPRequestHandler):
 
         if path in {"/", "/index.html"}:
             self._serve_index()
+        elif path == "/api/config":
+            key = os.getenv("GROQ_API_KEY", "")
+            self._send_json({
+                "has_api_key": bool(key),
+                "api_key": key,
+                "model": os.getenv("FAULTLINE_MODEL", "openai/gpt-oss-20b"),
+            })
         elif path == "/api/status":
             self._send_json(runner.latest_status)
         elif path == "/api/diff":
